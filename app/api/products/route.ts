@@ -28,7 +28,11 @@ export async function GET(request: NextRequest) {
       ];
     } else if (type === "sellers") {
       // Productos de vendedores (con ownerId)
-      filter.ownerId = { $exists: true, $ne: null, $ne: "" };
+      filter.$and = [
+        { ownerId: { $exists: true } },
+        { ownerId: { $ne: null } },
+        { ownerId: { $ne: "" } }
+      ];
       filter.isOfficial = { $ne: true };
     }
     

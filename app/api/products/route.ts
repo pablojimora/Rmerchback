@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnection from "@/app/lib/dbConnection";
 import Product from "@/app/models/products";
+import { getAuthUser } from "@/lib/auth";
+import User from "@/app/models/user";
 
 // GET - Obtener todos los productos
 export async function GET(request: NextRequest) {
@@ -97,6 +99,15 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnection();
 
+    // Verificar autenticación
+    const authUser = getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json({
+        success: false,
+        message: "No autorizado. Debe iniciar sesión para crear productos"
+      }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // Validar campos requeridos
@@ -131,7 +142,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const newProduct = new Product(body);
+    // Obtener información del usuario para el ownerName
+    const user = await User.findById(authUser.id);
+    
+    // Asignar automáticamente el ownerId y ownerName del usuario autenticado
+    const productData = {
+      ...body,
+      ownerId: authUser.id,
+      ownerName: user?.name || authUser.email,
+      isOfficial: authUser.role === "admin" // Si es admin, marcarlo como oficial
+    };
+
+    const newProduct = new Product(productData);
     await newProduct.save();
 
     return NextResponse.json({
